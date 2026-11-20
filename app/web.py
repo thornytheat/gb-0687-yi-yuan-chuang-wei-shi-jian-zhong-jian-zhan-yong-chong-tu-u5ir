@@ -3,9 +3,9 @@ from app import store
 from app.pipeline import run
 from app.config import TITLE,MODULES,STAGES,COLUMNS,SAMPLES,DEFAULTS
 def view(stage):
-    if not 1<=stage<=7: return "页面不存在",404
+    if not 1<=stage<=len(STAGES): return "页面不存在",404
     run_id=request.args.get("run")
-    result=store.fetch(run_id) if run_id else run()
+    result=store.fetch(run_id) if run_id else run(stop=8 if stage==8 else 7)
     sample=(SAMPLES/"dirty.csv").read_text(encoding="utf-8-sig")
     data=result["stages"][stage-1]
     from datetime import datetime
@@ -19,5 +19,7 @@ def view(stage):
             if x["bed"]==bed:
                 bars.append({**x,"left":(datetime.fromisoformat(x["start"]).timestamp()-start)/(end-start or 1)*100,"width":(datetime.fromisoformat(x["end"]).timestamp()-datetime.fromisoformat(x["start"]).timestamp())/(end-start or 1)*100})
         tracks.append({"bed":bed,"bars":bars})
+    admission_history=store.admission_history(result["admission"]["shift_time"] and "|".join(result["admission"]["isolation_beds"])+"@"+result["admission"]["shift_time"]) if stage==8 else []
     return render_template(f"m{stage}.html",title=TITLE,modules=MODULES,stage=stage,result=result,data=data,
-                           sample=sample,defaults=DEFAULTS,columns=COLUMNS,history=store.history(),tracks=tracks)
+                           sample=sample,defaults=DEFAULTS,columns=COLUMNS,history=store.history(),tracks=tracks,
+                           admission_history=admission_history)

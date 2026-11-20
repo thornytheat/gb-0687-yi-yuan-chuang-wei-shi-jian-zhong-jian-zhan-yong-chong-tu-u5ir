@@ -15,6 +15,7 @@
 | M5 占床日历 | 按当地午夜切分占床 | `/api/m5` | `app/modules/m5_calendar/rules.py` `app/modules/m5_calendar/service.py` | `tests/test_m5_calendar.py` |
 | M6 病区对账 | 核对分段与日历分钟 | `/api/m6` | `app/modules/m6_reconcile/rules.py` `app/modules/m6_reconcile/service.py` | `tests/test_m6_reconcile.py` |
 | M7 补传重算 | 标记迟到并复核补传 | `/api/m7` | `app/modules/m7_replay/rules.py` `app/modules/m7_replay/service.py` | `tests/test_m7_replay.py` |
+| M8 班次收治 | 隔离余量与班次结论 | `/api/m8` `/api/admission` | `app/modules/m8_admission/rules.py` `app/modules/m8_admission/service.py` `app/store.py` | `tests/test_m8_admission.py` |
 
 ## 陷阱登记
 
@@ -28,6 +29,10 @@
 | TRAP-14 | 同版事件矛盾 | 覆盖或重复计数 | 显式检查保留证据 | `app/modules/m3_episodes/rules.py` | `tests/test_m3_episodes.py::test_same_version_conflict` |
 | TRAP-23 | 相接转床端点 | 覆盖或重复计数 | 显式检查保留证据 | `app/modules/m4_conflicts/rules.py` | `tests/test_m4_conflicts.py::test_touching_not_overlap` |
 | TRAP-26 | 旧版复核 | 覆盖或重复计数 | 显式检查保留证据 | `app/store.py` | `tests/test_m7_replay.py::test_optimistic_lock` |
+| TRAP-31 | 隔离床当普通空床 | 普通可收治床数虚高，重症误用专用床 | 专用隔离床单列，不计入普通可收治，按原因码留痕 | `app/modules/m8_admission/rules.py` | `tests/test_m8_admission.py::test_isolation_bed_not_counted_as_general_free` |
+| TRAP-32 | 晚到隔离记录 | 旧结论继续生效，床位去向丢失 | 同班次旧结论置失效并保留 payload，新结论回链 | `app/store.py` `app/modules/m8_admission/rules.py` | `tests/test_m8_admission.py::test_late_isolation_record_supersedes_old_conclusion` |
+| TRAP-33 | 同记录重试 | 重复新增占用/结论行 | 结论ID由输入哈希，INSERT 前查重 | `app/store.py` | `tests/test_m8_admission.py::test_retry_same_record_is_idempotent` |
+| TRAP-34 | 页面与导出各算一遍 | 两处结论不一致 | 导出直接读取已存储结论 payload | `app/main.py` | `tests/test_m8_admission.py::test_export_uses_same_conclusion_as_page` |
 
 ## 对账规则
 
@@ -36,4 +41,4 @@
 
 ## 已知不覆盖
 
-床位目录固定为两病区各四床，时间使用明确偏移。未做医嘱、收费与患者隐私字段。双占保留证据待人工复核，不自行删除患者。
+床位目录固定为两病区各四床，时间使用明确偏移。未做医嘱、收费与患者隐私字段。双占保留证据待人工复核，不自行删除患者。班次收治不模拟床旁消毒与转科路径，隔离保留床在本班次内锁定，跨班次需重新出具结论。

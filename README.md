@@ -23,6 +23,7 @@ docker compose config --quiet
 - M5 占床日历：按当地午夜切分占床，入口 `/m/5`、`GET/POST /api/m5`。
 - M6 病区对账：核对分段与日历分钟，入口 `/m/6`、`GET/POST /api/m6`。
 - M7 补传重算：标记迟到并复核补传，入口 `/m/7`、`GET/POST /api/m7`。
+- M8 班次收治：隔离余量与班次收治结论，入口 `/m/8`、`GET/POST /api/m8`，持久化结论 `POST /api/admission`、导出 `GET /api/admission.csv`。
 
 ## 演示与复核
 
@@ -30,6 +31,12 @@ docker compose config --quiet
 2. 修改CSV单元格或参数并重跑，保留行号与输入摘要。
 3. 在最后一步复核，旧版本提交返回409。
 4. 证据CSV包含采信行和隔离行，重跑相同内容复用批次。
+
+## 班次收治（M8）
+
+专用隔离床（默认 `004,104`）不计入普通可收治床数。页面在班次时点（默认 02:00）逐床给出能否收治与原因码：占用 `OCCUPIED`、疑似保留 `ISOLATION_RESERVED`、隔离空床 `ISOLATION_READY`、普通空床 `GENERAL_FREE`。
+先按 `suspect_reserve` 从空闲隔离床锁定疑似余量，普通重症只能使用普通空床；夜班仅剩隔离床时结论为暂缓收治，隔离余量明确列示。`sample_data/night_shift.csv` 复现该场景。
+晚到的隔离床记录（采信行按 M7 迟到审计、隔离行按同一阈值判定）使同班次旧结论失效，原床位去向与依据完整留档；同一记录重试返回同一结论，不新增占用。页面与 `admission.csv` 导出共用同一份已存储结论。
 
 ## 数据与目录
 

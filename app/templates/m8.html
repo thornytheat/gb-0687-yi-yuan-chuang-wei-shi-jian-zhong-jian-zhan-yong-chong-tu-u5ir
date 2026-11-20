@@ -1,0 +1,68 @@
+{% extends "base.html" %}{% block content %}
+<div class="schedule">
+  <section class="panel">
+    <div class="panel__head"><h2>班次收治结论</h2><span>{{result.admission.shift_time[:16]}}</span></div>
+    <div class="admission-verdict {% if result.admission.superseded_by_late %}is-superseded{% endif %}">
+      <b>{{result.admission.decision}}</b>
+      <p>{{result.admission.summary}}</p>
+      <small>{{result.admission.reserve_policy}}</small>
+      {% if result.admission.late_isolation_triggers %}
+      <div class="supersede-note">晚到隔离记录 {{result.admission.late_isolation_triggers|length}} 条，同班次旧结论已失效（原床位去向与依据留档）</div>
+      {% endif %}
+    </div>
+    <div class="admission-counts">
+      {% for item in [
+        ('普通可收治', result.admission.counts.general_admissible),
+        ('隔离余量', result.admission.counts.reserve_margin),
+        ('空闲隔离床', result.admission.counts.isolation_free),
+        ('占用床', result.admission.counts.occupied_beds),
+        ('待收重症', result.admission.critical_pending),
+        ('本次可收', result.admission.counts.critical_admitted)] %}
+      <div><small>{{item[0]}}</small><strong>{{item[1]}}</strong></div>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="panel upload">
+    <div class="panel__head"><h2>班次参数</h2><span>同一记录重试不新增占用</span></div>
+    <form id="admission-form">
+      <label>班次时点<input name="shift_time" value="{{defaults.shift_time}}"></label>
+      <label>专用隔离床（逗号分隔）<input name="isolation_beds" value="{{defaults.isolation_beds}}"></label>
+      <label>疑似保留床数<input name="suspect_reserve" inputmode="numeric" value="{{defaults.suspect_reserve}}"></label>
+      <label>待收重症数<input name="critical_pending" inputmode="numeric" value="{{defaults.critical_pending}}"></label>
+      <label>迟到阈值 min<input name="late_minutes" inputmode="decimal" value="{{defaults.late_minutes}}"></label>
+      <button class="action fill">出具收治结论</button>
+    </form>
+    <a class="action fill export-link" href="/api/admission.csv">导出收治结论 CSV ↗</a>
+  </section>
+</div>
+<section class="panel lower">
+  <div class="panel__head"><h2>逐床收治判定</h2><span>8 床 · 原因码留痕</span></div>
+  <div class="scroll"><table>
+    <thead><tr><th>床号</th><th>病区</th><th>专用隔离</th><th>占用</th><th>疑似保留</th><th>可收治</th><th>普通收治</th><th>原因码</th><th>原因</th><th>床位依据</th></tr></thead>
+    <tbody>
+    {% for bed in result.admission.bed_board %}
+      <tr class="bed-row bed-{{bed.code}}">
+        <td>{{bed.bed}}</td><td>{{bed.ward}}</td>
+        <td>{{'是' if bed.isolation else '否'}}</td>
+        <td>{{'是' if bed.occupied else '否'}}</td>
+        <td>{{'是' if bed.reserved else '否'}}</td>
+        <td><b class="{{'ok' if bed.admissible else 'no'}}">{{'可收治' if bed.admissible else '不可收治'}}</b></td>
+        <td><b class="{{'ok' if bed.general_admissible else 'no'}}">{{'可排普通' if bed.general_admissible else '不可'}}</b></td>
+        <td><code>{{bed.code}}</code></td><td>{{bed.reason}}</td>
+        <td class="basis">{% if bed.basis %}{% for x in bed.basis %}{{x.patient}} {{x.start[:16]}}→{{x.end[:16]}}{{'（开放段）' if x.open else ''}}；{% endfor %}{% else %}—{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% if admission_history %}
+<section class="panel lower">
+  <div class="panel__head"><h2>同班次结论留档</h2><span>失效结论保留原床位去向</span></div>
+  {% for item in admission_history %}
+  <a class="past" href="/api/admission.csv?admission={{item.admission_id}}">
+    {{item.admission_id[:12]}} / {{item.status}} / {{item.decision}} / 普通可收 {{item.counts.general_admissible}} / 隔离余量 {{item.counts.reserve_margin}}
+  </a>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

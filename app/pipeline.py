@@ -17,5 +17,5 @@ def run(raw=None, params=None, stop=7, persist=True):
     ctx.pop("source",None);ctx.pop("raw",None)
     result=serial(ctx);result["manifest"]=make(raw,actual);result["elapsed_ms"]=round((perf_counter()-t)*1000,3)
     result["version"]=1;result["review"]="待复核"
-    if persist and stop==7: return store.save(result)
+    if persist and stop in (7, 8): return store.save(result)
     return result
